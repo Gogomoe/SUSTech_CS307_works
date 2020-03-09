@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
+import java.io.BufferedInputStream
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -64,6 +65,29 @@ class BlockingFileDataService : DataService {
                         .filter { it.getString("name") == name }
                         .toTypedArray()
         )
+    }
+
+    override suspend fun select(id: Int): JsonObject {
+        val input = file.inputStream().bufferedReader()
+        var line: String? = input.readLine()
+        while (line != null) {
+            val it = line.split(',')
+            if (it[0] == id.toString()) {
+                return jsonObjectOf(
+                        "id" to it[0].toInt(),
+                        "name" to it[1],
+                        "englishName" to it[2],
+                        "zipCode" to it[3],
+                        "confirmedCount" to it[4].toInt(),
+                        "suspectedCount" to it[5].toInt(),
+                        "curedCount" to it[6].toInt(),
+                        "deadCount" to it[7].toInt(),
+                        "updateTime" to Instant.from(dateFormatter.parse(it[8]))
+                )
+            }
+            line = input.readLine()
+        }
+        throw NullPointerException()
     }
 
     private fun readFile(): List<JsonObject> {

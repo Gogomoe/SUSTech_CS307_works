@@ -9,6 +9,8 @@ interface DataService {
 
     suspend fun cityData(name: String): JsonArray
 
+    suspend fun select(id: Int): JsonObject
+
     suspend fun init()
 
 }

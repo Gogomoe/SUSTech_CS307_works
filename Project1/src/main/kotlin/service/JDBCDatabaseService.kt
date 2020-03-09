@@ -8,6 +8,7 @@ import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.ResultSet
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
+import io.vertx.kotlin.ext.jdbc.querySingleWithParamsAwait
 import io.vertx.kotlin.ext.sql.queryAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
@@ -68,6 +69,30 @@ class JDBCDatabaseService : DataService {
                         name
                 )
         ).toJsonArray()
+    }
+
+    override suspend fun select(id: Int): JsonObject {
+        return client.querySingleWithParamsAwait(
+                """
+                    SELECT * FROM city
+                    WHERE id = ?;
+                """.trimIndent(),
+                jsonArrayOf(
+                        id
+                )
+        )!!.let {
+            jsonObjectOf(
+                    "id" to it.getInteger(0),
+                    "name" to it.getString(1),
+                    "englishName" to it.getString(2),
+                    "zipCode" to it.getString(3),
+                    "confirmedCount" to it.getInteger(4),
+                    "suspectedCount" to it.getInteger(5),
+                    "curedCount" to it.getInteger(6),
+                    "deadCount" to it.getInteger(7),
+                    "updateTime" to it.getInstant(8)
+            )
+        }
     }
 
     fun ResultSet.toJsonArray(): JsonArray = JsonArray(

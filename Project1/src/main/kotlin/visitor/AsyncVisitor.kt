@@ -9,6 +9,7 @@ import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.lang.Math.random
@@ -16,7 +17,7 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.random.Random
 
-class SyncVisitor(val vertx: Vertx, val prefix: String) {
+class AsyncVisitor(val vertx: Vertx, val prefix: String) {
 
     private val scope = CoroutineScope(vertx.orCreateContext.dispatcher())
 
@@ -47,15 +48,19 @@ class SyncVisitor(val vertx: Vertx, val prefix: String) {
         requestSelect()
     }
 
-    suspend fun testRequest(times: Int): Duration {
+    suspend fun testRequest(times: Int, count: Int): Duration {
 
         val startTime = Instant.now()
 
-        scope.launch {
-            repeat(times) {
-                request()
+        val tasks = List(count) {
+            scope.launch {
+                repeat(times) {
+                    request()
+                }
             }
-        }.join()
+        }
+
+        tasks.forEach { it.join() }
 
         val endTime = Instant.now()
 

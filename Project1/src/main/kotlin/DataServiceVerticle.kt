@@ -25,6 +25,12 @@ class DataServiceVerticle(val service: DataService, val prefix: String) : Corout
                 message.reply(service.cityData(name))
             }
         }
+        eventBus.consumer<JsonObject>("$prefix-select") { message ->
+            val id = message.body().getInteger("id")
+            launch {
+                message.reply(service.select(id))
+            }
+        }
     }
 
 }
