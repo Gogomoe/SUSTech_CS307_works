@@ -4,6 +4,7 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import service.AsyncFileDataService
 import service.BlockingFileDataService
 import service.JDBCDatabaseService
+import service.ReactiveDatabaseService
 import visitor.AsyncVisitor
 import visitor.SyncVisitor
 import java.io.File
@@ -20,9 +21,11 @@ class MainVerticle : CoroutineVerticle() {
         )
         vertx.deployVerticleAwait(DataServiceVerticle(BlockingFileDataService(), "blocking-file"))
         vertx.deployVerticleAwait(DataServiceVerticle(JDBCDatabaseService(), "jdbc"))
+        vertx.deployVerticle(DataServiceVerticle(ReactiveDatabaseService(), "reactive-database"))
 
         val syncBlockingFileVisitor = SyncVisitor(vertx, "blocking-file")
         val syncJDBCVisitor = SyncVisitor(vertx, "jdbc")
+        val syncReactiveVisitor = SyncVisitor(vertx, "reactive-database")
 
         timesScope.take(5).forEach {
             val costTime = syncBlockingFileVisitor.testRequest(it)
@@ -32,13 +35,30 @@ class MainVerticle : CoroutineVerticle() {
             val costTime = syncJDBCVisitor.testRequest(it)
             println("sync-${syncJDBCVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
+        timesScope.take(8).forEach {
+            val costTime = syncReactiveVisitor.testRequest(it)
+            println("sync-${syncReactiveVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        }
 
         vertx.deployVerticleAwait(DataServiceVerticle(AsyncFileDataService(), "async-file"))
+
         val asyncFileVisitor = AsyncVisitor(vertx, "async-file")
+        val asyncJDBCVisitor = AsyncVisitor(vertx, "jdbc")
+        val asyncDatabaseVisitor = AsyncVisitor(vertx, "reactive-database")
+
         timesScope.take(5).forEach {
             val costTime = asyncFileVisitor.testRequest(it / 5, 5)
             println("async-${asyncFileVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
+        timesScope.take(8).forEach {
+            val costTime = asyncJDBCVisitor.testRequest(it / 5, 5)
+            println("async-${asyncJDBCVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        }
+        timesScope.take(8).forEach {
+            val costTime = asyncDatabaseVisitor.testRequest(it / 5, 5)
+            println("async-${asyncDatabaseVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        }
+
 
     }
 

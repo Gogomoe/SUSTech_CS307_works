@@ -4,35 +4,37 @@ import DataService
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.jdbc.JDBCClient
-import io.vertx.ext.sql.ResultSet
-import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.ext.jdbc.querySingleWithParamsAwait
-import io.vertx.kotlin.ext.sql.queryAwait
-import io.vertx.kotlin.ext.sql.queryWithParamsAwait
-import io.vertx.kotlin.ext.sql.updateWithParamsAwait
-import java.time.Instant
+import io.vertx.kotlin.pgclient.preparedQueryAwait
+import io.vertx.kotlin.pgclient.queryAwait
+import io.vertx.pgclient.PgConnectOptions
+import io.vertx.pgclient.PgPool
+import io.vertx.sqlclient.PoolOptions
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
+import io.vertx.sqlclient.Tuple
+import java.time.ZoneId
 
-class JDBCDatabaseService : DataService {
+class ReactiveDatabaseService() : DataService {
 
-    private lateinit var client: JDBCClient
+    lateinit var client: PgPool
 
     override suspend fun init() {
-        client = JDBCClient.createShared(Vertx.currentContext().owner(), jsonObjectOf(
-                "url" to "jdbc:postgresql://localhost:5432/project1",
-                "driver_class" to "org.postgresql.Driver",
-                "user" to "checker",
-                "password" to "123456"
-        ))
+        val connectOptions = PgConnectOptions()
+                .setPort(5432)
+                .setHost("localhost")
+                .setUser("checker")
+                .setPassword("123456")
+                .setDatabase("project1")
+        client = PgPool.pool(Vertx.currentContext().owner(),
+                connectOptions, PoolOptions().setMaxSize(5))
     }
 
-
     override suspend fun insert(cityData: JsonObject) {
-        client.updateWithParamsAwait("""
+        client.preparedQueryAwait("""
             INSERT INTO city (name, englishName, zipCode, confirmedCount, suspectedCount, curedCount, deadCount, updateTime)
-            VALUES (?,?,?,?,?,?,?,?)
-        """.trimIndent(), jsonArrayOf(
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        """.trimIndent(), Tuple.of(
                 cityData.getString("name"),
                 cityData.getString("englishName"),
                 cityData.getString("zipCode"),
@@ -42,38 +44,38 @@ class JDBCDatabaseService : DataService {
                 cityData.getInteger("deadCount"),
                 cityData.getInstant("updateTime")
         ))
+
     }
 
     override suspend fun lastData(): JsonArray {
-        return client.queryAwait("""
+        return client.queryAwait(
+                """
                     SELECT c1.*
                     FROM city c1
                              JOIN (SELECT name, max(updateTime) last_time
                                    FROM city
                                    GROUP BY name) c2
-                                  ON c1.name = c2.name and c1.updateTime = c2.last_time;
+                                  ON c1.name = c2.name and c1.updateTime = c2.last_time
                 """.trimIndent()
         ).toJsonArray()
-
     }
 
     override suspend fun cityData(name: String): JsonArray {
-
-        return client.queryWithParamsAwait("""
+        return client.preparedQueryAwait("""
                     SELECT * FROM city
-                    WHERE name = ?                   
-                """.trimIndent(), jsonArrayOf(
+                    WHERE name = $1                   
+                """.trimIndent(), Tuple.of(
                 name
         )).toJsonArray()
     }
 
     override suspend fun select(id: Int): JsonObject {
-        return client.querySingleWithParamsAwait("""
+        return client.preparedQueryAwait("""
                     SELECT * FROM city
-                    WHERE id = ?;
-                """.trimIndent(), jsonArrayOf(
+                    WHERE id = $1
+                """.trimIndent(), Tuple.of(
                 id
-        ))!!.let {
+        )).first().let {
             jsonObjectOf(
                     "id" to it.getInteger(0),
                     "name" to it.getString(1),
@@ -83,13 +85,13 @@ class JDBCDatabaseService : DataService {
                     "suspectedCount" to it.getInteger(5),
                     "curedCount" to it.getInteger(6),
                     "deadCount" to it.getInteger(7),
-                    "updateTime" to it.getInstant(8)
+                    "updateTime" to it.getLocalDateTime(8).atZone(ZoneId.systemDefault()).toInstant()
             )
         }
     }
 
-    fun ResultSet.toJsonArray(): JsonArray = JsonArray(
-            this.results.map {
+    private fun RowSet<Row>.toJsonArray() = JsonArray(
+            this.map {
                 jsonObjectOf(
                         "id" to it.getInteger(0),
                         "name" to it.getString(1),
@@ -99,9 +101,10 @@ class JDBCDatabaseService : DataService {
                         "suspectedCount" to it.getInteger(5),
                         "curedCount" to it.getInteger(6),
                         "deadCount" to it.getInteger(7),
-                        "updateTime" to it.getInstant(8)
+                        "updateTime" to it.getLocalDateTime(8).atZone(ZoneId.systemDefault()).toInstant()
                 )
             }
     )
 
 }
+

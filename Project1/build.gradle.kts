@@ -17,6 +17,7 @@ dependencies {
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.0.0-milestone4")
 
     implementation("io.vertx:vertx-jdbc-client:4.0.0-milestone4")
+    implementation("io.vertx:vertx-pg-client:4.0.0-milestone4")
 
     implementation("org.postgresql:postgresql:42.2.10")
 
