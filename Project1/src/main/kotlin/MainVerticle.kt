@@ -5,7 +5,7 @@ import service.AsyncFileDataService
 import service.BlockingFileDataService
 import service.JDBCDatabaseService
 import service.ReactiveDatabaseService
-import visitor.AsyncVisitor
+import visitor.ConcurrentVisitor
 import visitor.SyncVisitor
 import java.io.File
 import java.time.Instant
@@ -17,46 +17,60 @@ class MainVerticle : CoroutineVerticle() {
     override suspend fun start() {
 //        addData()
         val timesScope = listOf(
-                1, 10, 20, 50, 100, 200, 500, 1000
+                1, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000
         )
         vertx.deployVerticleAwait(DataServiceVerticle(BlockingFileDataService(), "blocking-file"))
         vertx.deployVerticleAwait(DataServiceVerticle(JDBCDatabaseService(), "jdbc"))
+
+        vertx.deployVerticleAwait(DataServiceVerticle(AsyncFileDataService(), "async-file"))
         vertx.deployVerticle(DataServiceVerticle(ReactiveDatabaseService(), "reactive-database"))
 
         val syncBlockingFileVisitor = SyncVisitor(vertx, "blocking-file")
         val syncJDBCVisitor = SyncVisitor(vertx, "jdbc")
+        val syncAsyncFileVisitor = SyncVisitor(vertx, "async-file")
         val syncReactiveVisitor = SyncVisitor(vertx, "reactive-database")
+
+        syncJDBCVisitor.testRequest(1)
+        syncReactiveVisitor.testRequest(1)
 
         timesScope.take(5).forEach {
             val costTime = syncBlockingFileVisitor.testRequest(it)
             println("sync-${syncBlockingFileVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
-        timesScope.take(8).forEach {
+        timesScope.take(5).forEach {
+            val costTime = syncAsyncFileVisitor.testRequest(it)
+            println("sync-${syncAsyncFileVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        }
+        timesScope.take(10).forEach {
             val costTime = syncJDBCVisitor.testRequest(it)
             println("sync-${syncJDBCVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
-        timesScope.take(8).forEach {
+        timesScope.take(10).forEach {
             val costTime = syncReactiveVisitor.testRequest(it)
             println("sync-${syncReactiveVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
 
-        vertx.deployVerticleAwait(DataServiceVerticle(AsyncFileDataService(), "async-file"))
 
-        val asyncFileVisitor = AsyncVisitor(vertx, "async-file")
-        val asyncJDBCVisitor = AsyncVisitor(vertx, "jdbc")
-        val asyncDatabaseVisitor = AsyncVisitor(vertx, "reactive-database")
+        val concurrentBlockingFileVisitor = ConcurrentVisitor(vertx, "blocking-file")
+        val concurrentJDBCVisitor = ConcurrentVisitor(vertx, "jdbc")
+        val concurrentFileVisitor = ConcurrentVisitor(vertx, "async-file")
+        val concurrentDatabaseVisitor = ConcurrentVisitor(vertx, "reactive-database")
 
-        timesScope.take(5).forEach {
-            val costTime = asyncFileVisitor.testRequest(it / 5, 5)
-            println("async-${asyncFileVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        timesScope.take(5).drop(3).forEach {
+            val costTime = concurrentBlockingFileVisitor.testRequest(it / 50, 50)
+            println("concurrent-${concurrentBlockingFileVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
-        timesScope.take(8).forEach {
-            val costTime = asyncJDBCVisitor.testRequest(it / 5, 5)
-            println("async-${asyncJDBCVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        timesScope.take(5).drop(3).forEach {
+            val costTime = concurrentFileVisitor.testRequest(it / 50, 50)
+            println("concurrent-${concurrentFileVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
-        timesScope.take(8).forEach {
-            val costTime = asyncDatabaseVisitor.testRequest(it / 5, 5)
-            println("async-${asyncDatabaseVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        timesScope.take(10).drop(3).forEach {
+            val costTime = concurrentJDBCVisitor.testRequest(it / 50, 50)
+            println("concurrent-${concurrentJDBCVisitor.prefix}: $it : ${costTime.toMillis()}ms")
+        }
+        timesScope.take(10).drop(3).forEach {
+            val costTime = concurrentDatabaseVisitor.testRequest(it / 50, 50)
+            println("concurrent-${concurrentDatabaseVisitor.prefix}: $it : ${costTime.toMillis()}ms")
         }
 
 

@@ -27,7 +27,7 @@ class ReactiveDatabaseService() : DataService {
                 .setPassword("123456")
                 .setDatabase("project1")
         client = PgPool.pool(Vertx.currentContext().owner(),
-                connectOptions, PoolOptions().setMaxSize(5))
+                connectOptions, PoolOptions().setMaxSize(16))
     }
 
     override suspend fun insert(cityData: JsonObject) {

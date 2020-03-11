@@ -17,7 +17,7 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.random.Random
 
-class AsyncVisitor(val vertx: Vertx, val prefix: String) {
+class ConcurrentVisitor(val vertx: Vertx, val prefix: String) {
 
     private val scope = CoroutineScope(vertx.orCreateContext.dispatcher())
 
