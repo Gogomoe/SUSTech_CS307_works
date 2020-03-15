@@ -20,16 +20,18 @@ CREATE TABLE station
 
 CREATE TABLE train
 (
-    id   SERIAL      NOT NULL,
-    code VARCHAR(10) NOT NULL,
+    id          SERIAL      NOT NULL,
+    code        VARCHAR(10) NOT NULL,
+    basic_price INT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE (code)
 );
 
 CREATE TABLE seat
 (
-    id   SERIAL      NOT NULL,
-    name VARCHAR(20) NOT NULL,
+    id          SERIAL      NOT NULL,
+    name        VARCHAR(20) NOT NULL,
+    basic_price INT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE (name)
 );
@@ -60,6 +62,7 @@ CREATE TABLE train_line_station
     train_line_id INT       NOT NULL,
     station_id    INT       NOT NULL,
     arrive_time   TIMESTAMP NOT NULL,
+    depart_time   TIMESTAMP NOT NULL,
     PRIMARY KEY (train_line_id, station_id),
     FOREIGN KEY (train_line_id) REFERENCES train_line (id),
     FOREIGN KEY (station_id) REFERENCES station (id)
