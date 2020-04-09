@@ -11,5 +11,5 @@ FROM (
               ) AS bl ON s.station_id = bl.station_id
          WHERE number >= 10
      ) AS line_bus_count
-ORDER BY line_id, number DESC, station_id DESC OFFSET 15
+ORDER BY line_id, number, station_id DESC OFFSET 15
 LIMIT 10;
